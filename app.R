@@ -44,7 +44,7 @@ ui <- fluidPage(
                          users, it will delete all of their equipment checkout records too."),
                  tags$br(),
                  tags$h4(HTML('<i class = "fa-solid fa-box"></i> Full Inventory Tab:')),
-                 tags$p("This tab just has a table with the full inventory list.", span("And maybe you can add inventory items from this tab? Or is that too overcomplicated and you should just modify the CSV?", style = "color:red; font-weight:bold;")),
+                 tags$p("This tab just has a table with the full inventory list."),
                  tags$br()),
 
       # INVENTORY (SPREAD OUT) (UI) -----
