@@ -264,6 +264,8 @@ server <- function(input, output, session) {
     removeModal()
     })
   
+# Cam used to have code here :(
+  
 # INVENTORY OVERVIEW (SERVER) ---------
   # Create avail_inventory as a reactiveValues data frame that can be modified
   avail_inventory <- reactiveValues(df = inventory)
@@ -280,6 +282,10 @@ server <- function(input, output, session) {
   })
 }
 
+
+
 # Deploy app
 shinyApp(ui, server)
+
+
 
