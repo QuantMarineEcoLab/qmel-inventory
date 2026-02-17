@@ -1,0 +1,10 @@
+name: qmel-inventory
+title:
+username: camragland
+account: camragland
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16693381
+bundleId: 11593799
+url: https://camragland.shinyapps.io/qmel-inventory/
+version: 1

@@ -1,0 +1,267 @@
+---
+title: "V3_QuartoApp"
+format: html
+editor: visual
+---
+
+```{r}
+# =========================
+# LIBRARIES
+# =========================
+library(shiny)
+library(dplyr)
+library(data.table)
+library(DT)
+library(shinyFeedback)
+
+# =========================
+# HELPERS
+# =========================
+
+empty_checkout <- function() {
+  data.frame(
+    checked_out_by = character(),
+    item = character(),
+    quantity = numeric(),
+    location = character(),
+    checkout_start = character(),
+    checked_out_until = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
+safe_read_checkout <- function(file) {
+  
+  if (!file.exists(file)) {
+    df <- empty_checkout()
+    fwrite(df, file)
+    return(df)
+  }
+  
+  df <- tryCatch(
+    fread(file),
+    error = function(e) empty_checkout()
+  )
+  
+  if (nrow(df) == 0) return(empty_checkout())
+  
+  df %>%
+    mutate(
+      checked_out_by = as.character(checked_out_by),
+      item = as.character(item),
+      quantity = as.numeric(quantity),
+      location = as.character(location),
+      checkout_start = as.character(checkout_start),
+      checked_out_until = as.character(checked_out_until)
+    )
+}
+
+# =========================
+# LOAD DATA
+# =========================
+
+users <- fread("users.csv")
+inventory <- fread("inventory.csv")
+checkout <- safe_read_checkout("checkout.csv")
+
+# =========================
+# UI
+# =========================
+
+ui <- fluidPage(
+  
+  useShinyFeedback(),
+  
+  titlePanel("QMEL Inventory App"),
+  
+  tabsetPanel(id = "mainTabset",
+              
+              tabPanel(
+                icon = icon("house"),
+                "Welcome",
+                
+                tags$h3("Welcome to the QMEL Inventory App!"),
+                tags$br(),
+                
+                tags$h4("A quick overview of how the app works:"),
+                tags$p("The idea is that this app will help us easily view and search what items we have in the lab. Hopefully this will help us manage and keep track of our tools in a more coordinated way than last-minute Slack messages when we can't find what we need."),
+                tags$br(),
+                
+                tags$h4(HTML('<i class="fa-solid fa-box-open"></i> Inventory Overview Tab:')),
+                tags$p("In this tab, you can view the currently-available inventory as well as see what individual users have checked out and when they expect to return their items. You can also view upcoming checkouts for users who have planned far in advance."),
+                tags$br(),
+                
+                tags$h4(HTML('<i class="fa-solid fa-cart-shopping"></i> Checkout Tab:')),
+                tags$p("In this tab, the intended use is that you can check out items one by one and add them to your cart, which also creates a 'packing list' for yourself as you plan your fieldwork or labwork. When you're done packing/adding to your cart, you press submit to finish checking out your items. You can also view what items you currently have checked out."),
+                tags$br(),
+                
+                tags$h4(HTML('<i class="fa-solid fa-users"></i> Modify Users Tab:')),
+                tags$p("In this tab, you can add and remove the list of available users for this app. Useful for when folks join the lab or graduate. Keep in mind that when you remove users, it will delete all of their equipment checkout records too."),
+                tags$br(),
+                
+                tags$h4(HTML('<i class="fa-solid fa-box"></i> Full Inventory Tab:')),
+                tags$p("This tab just has a table with the full inventory list."),
+                tags$br()
+              ),
+              
+              tabPanel("Inventory Overview",
+                       DTOutput("inventory")
+              ),
+              
+              tabPanel("Checkout / Return",
+                       
+                       sidebarLayout(
+                         
+                         sidebarPanel(
+                           selectInput("checkout_name","User", choices = users$name),
+                           selectInput("checkout_item","Item", choices = inventory$item),
+                           numericInput("checkout_quant","Quantity",1,min=1),
+                           textInput("checkout_location","Location"),
+                           dateRangeInput("checkout_dates","Checkout timeframe"),
+                           actionButton("addToCart","Add to cart")
+                         ),
+                         
+                         mainPanel(
+                           h4("Items currently checked out"),
+                           DTOutput("myItems"),
+                           actionButton("returnItems","Return selected"),
+                           
+                           br(), br(),
+                           
+                           h4("Cart"),
+                           DTOutput("cart"),
+                           
+                           actionButton("submitCheckout","Submit checkout")
+                         )
+                       )
+              ),
+              
+              tabPanel("Full Inventory",
+                       DTOutput("fullInventory")
+              )
+  )
+)
+
+# =========================
+# SERVER
+# =========================
+
+server <- function(input, output, session) {
+  
+  checkout_list <- reactiveVal(checkout)
+  cart_items <- reactiveVal(empty_checkout())
+  
+  # -------- ADD TO CART --------
+  observeEvent(input$addToCart, {
+    
+    req(input$checkout_name,
+        input$checkout_item,
+        input$checkout_dates)
+    
+    new_row <- data.frame(
+      checked_out_by = input$checkout_name,
+      item = input$checkout_item,
+      quantity = as.numeric(input$checkout_quant),
+      location = input$checkout_location,
+      checkout_start = as.character(input$checkout_dates[1]),
+      checked_out_until = as.character(input$checkout_dates[2]),
+      stringsAsFactors = FALSE
+    )
+    
+    cart_items(bind_rows(cart_items(), new_row))
+  })
+  
+  # -------- CART --------
+  output$cart <- renderDT({
+    datatable(cart_items(),
+              rownames = FALSE,
+              options = list(pageLength = 5))
+  }, server = TRUE)
+  
+  # -------- SUBMIT CHECKOUT --------
+  observeEvent(input$submitCheckout, {
+    
+    req(nrow(cart_items()) > 0)
+    
+    updated <- bind_rows(checkout_list(), cart_items())
+    
+    checkout_list(updated)
+    fwrite(updated, "checkout.csv")
+    
+    cart_items(empty_checkout())
+    
+    showNotification("Checkout submitted!")
+  })
+  
+  # -------- MY ITEMS --------
+  output$myItems <- renderDT({
+    
+    req(input$checkout_name)
+    
+    datatable(
+      checkout_list() %>%
+        filter(checked_out_by == input$checkout_name),
+      rownames = FALSE,
+      options = list(pageLength = 5)
+    )
+    
+  }, server = TRUE)
+  
+  # -------- RETURN --------
+  observeEvent(input$returnItems, {
+    
+    req(input$myItems_rows_selected)
+    
+    df <- checkout_list()
+    df <- df[-input$myItems_rows_selected, ]
+    
+    checkout_list(df)
+    fwrite(df, "checkout.csv")
+  })
+  
+  # -------- INVENTORY MERGE --------
+  inventory_view <- reactive({
+    
+    chk <- checkout_list()
+    
+    if (nrow(chk) == 0) {
+      inventory %>%
+        mutate(
+          checked_out_by = NA,
+          checked_out_until = NA
+        )
+    } else {
+      
+      summary_tbl <- chk %>%
+        group_by(item) %>%
+        summarise(
+          checked_out_by = paste(unique(checked_out_by),
+                                 collapse = ", "),
+          checked_out_until = max(checked_out_until),
+          .groups = "drop"
+        )
+      
+      left_join(inventory, summary_tbl, by = "item")
+    }
+  })
+  
+  output$inventory <- renderDT({
+    datatable(inventory,
+              rownames = FALSE,
+              options = list(pageLength = 10))
+  }, server = TRUE)
+  
+  output$fullInventory <- renderDT({
+    datatable(inventory_view(),
+              rownames = FALSE,
+              options = list(pageLength = 10))
+  }, server = TRUE)
+}
+
+
+# RUN APP ------
+
+shinyApp(ui, server)
+
+
+```

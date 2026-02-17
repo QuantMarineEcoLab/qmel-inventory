@@ -1,1 +1,2 @@
-﻿name,email,category,item,quantity,unique_id,location,start_date,end_date
+checked_out_by,item,quantity,location,checkout_start,checked_out_until
+Cam Ragland,biosensor unit,1,"",2026-02-17,2026-02-17
