@@ -16,9 +16,11 @@ gs4_auth(cache = ".secrets", email = "selina.l.cheng@gmail.com")
 # Helper function to create empty checkout table --------
 empty_checkout <- function() {
   data.frame(
+    checkout_id = character(),
     checked_out_by = character(),
     item = character(),
-    quantity = numeric(),
+    # quantity = numeric(),
+    quantity = character(),
     location = character(),
     checkout_start = character(),
     checked_out_until = character(),
@@ -83,19 +85,19 @@ ui <- fluidPage(
                 "Checkout / Return",
                        sidebarLayout(
                          sidebarPanel(
-                           selectInput("checkout_name","User", choices = users$name), # select user
+                           selectInput("checkout_name","User", choices = users$name, selected=""), # select user
                            selectInput("checkout_item","Item", choices = inventory$item), # select item
                            numericInput("checkout_quant","Quantity",1,min=1), # select quantity of items 
                            textInput("checkout_location","Location"),
                            dateRangeInput("checkout_dates","Checkout timeframe"),
-                           actionButton("addToCart","Add to cart") # ADD to cart button
+                           actionButton("addToCart","Add to cart", style="color: #fff; background-color: #337ab7; border-color: #2e6da4") # ADD to cart button
                          ),
                          
                          # table of items currently checked out by selected user 
                          mainPanel(
                            h4("Items currently checked out"),
                            DTOutput("myItems"),
-                           actionButton("returnItems","Return selected"), # return items button 
+                           actionButton("returnItems","Return selected", style="color: #fff; background-color: #C23E3E; border-color: #A81D1D"), # return items button 
                            
                            br(), br(),
                            
@@ -104,7 +106,7 @@ ui <- fluidPage(
                            DTOutput("cart"),
                            
                            #submit checkout button 
-                           actionButton("submitCheckout","Submit checkout")
+                           actionButton("submitCheckout","Submit checkout", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
                          )
                        )
               ),
@@ -140,6 +142,8 @@ ui <- fluidPage(
 
 # ---- SERVER -------
 server <- function(input, output, session) {
+  
+  # Observe user list. If it changes, update input in checkout list
   observe({
     avail_users$df
 
@@ -147,7 +151,6 @@ server <- function(input, output, session) {
       session = session, 
       inputId = "checkout_name",
       choices = avail_users$df$name,
-      # selected = head(y_vals, 1)
     )
   })
   
@@ -157,15 +160,26 @@ server <- function(input, output, session) {
   
   # ----- ADD TO CART FUNCTION (background for the button) --------
   observeEvent(input$addToCart, {
+    
+    # If there is no name or email, add feedback to the input fields that say you need to enter values
+    shinyFeedback::feedbackDanger("checkout_name", input$checkout_name == "", "Please enter a user")
+    shinyFeedback::feedbackDanger("checkout_item", input$checkout_item == "", "Please enter an item")
+    shinyFeedback::feedbackDanger("checkout_dates", input$checkout_dates == "", "Please enter expected time of check out")
+    
     req(input$checkout_name,
         input$checkout_item,
         input$checkout_dates)
     
+    # WIP ---- Add feedback here about if requested quantity is more than available
+    # Maybe add feedback about date needs to be in the future, and end date needs to be after start date
+    
     # create a new row from the user input
     new_row <- data.frame(
+      checkout_id = as.character((nrow(checkout_list())+1 + nrow(cart_items()))),
       checked_out_by = input$checkout_name,
       item = input$checkout_item,
-      quantity = as.numeric(input$checkout_quant),
+      # quantity = as.numeric(input$checkout_quant),
+      quantity = as.character(input$checkout_quant),
       location = input$checkout_location,
       checkout_start = as.character(input$checkout_dates[1]),
       checked_out_until = as.character(input$checkout_dates[2]),
@@ -178,7 +192,7 @@ server <- function(input, output, session) {
   
   # ----- Display cart --------
   output$cart <- renderDT({
-    datatable(cart_items(),
+    datatable(cart_items() %>% select(-checkout_id),
               rownames = FALSE,
               options = list(pageLength = 5))
   }, server = TRUE)
@@ -194,13 +208,14 @@ server <- function(input, output, session) {
     checkout_list(updated)
     
     # Save new merged table to CSV
-    fwrite(updated, "checkout.csv")
+    # fwrite(updated, "checkout.csv")
+    sheet_write(data = updated, ss = sheet_id, sheet = "checkout")
     
     # clear cart after your cart has been merged and the table has beem "submitted" 
     cart_items(empty_checkout())
     
     # Notification banner that your checkout has been approved
-    showNotification("Checkout submitted!")
+    showNotification("Items are now checked out to you!")
   })
   
   # ------ My items: overview of the items that you have checked out  --------
@@ -210,23 +225,40 @@ server <- function(input, output, session) {
     
     datatable(
       checkout_list() %>%
-        filter(checked_out_by == input$checkout_name),
+        filter(checked_out_by == input$checkout_name) %>% select(-checkout_id),
       rownames = FALSE,
       options = list(pageLength = 5)
     )
     
   }, server = TRUE)
   
-  # Return selected items feature
+  # Return selected items feature -----
   observeEvent(input$returnItems, {
+    
+    # If you have not selected any rows, make a pop up to prompt users to select rows
+    if(length(input$myItems_rows_selected) == 0){
+      showNotification("You have not selected any items. Please select rows to return.")
+    }
     
     req(input$myItems_rows_selected)
     
     df <- checkout_list()
-    df <- df[-input$myItems_rows_selected, ]
     
+    # Get checkout_ids from filtered list
+    return_ids <- checkout_list() %>%
+      filter(checked_out_by == input$checkout_name)
+    
+    return_ids <- return_ids[input$myItems_rows_selected, "checkout_id"]
+    
+    # Get rows of items 
+    df <- df %>% 
+      filter(checkout_id %in% return_ids == F)
+  
     checkout_list(df)
-    fwrite(df, "checkout.csv")
+    sheet_write(data = df, ss = sheet_id, sheet = "checkout")
+    # fwrite(df, "checkout.csv")
+    
+    showNotification("Items returned.")
   })
   
 # ------ Inventory SERVER --------
@@ -314,6 +346,8 @@ server <- function(input, output, session) {
       # Test appending to sheet
       sheet_write(data = avail_users$df, ss = sheet_id, sheet = "users")
       # write.csv(avail_users$df, "users.csv", row.names=F)
+      
+      showNotification("User added.")
     }
   })
   
