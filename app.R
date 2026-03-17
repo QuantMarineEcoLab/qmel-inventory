@@ -4,7 +4,14 @@ library(dplyr)
 library(data.table)
 library(DT)
 library(lubridate)
+library(googlesheets4)
 library(shinyFeedback) # adds feedback messages for user inputs (ex: checkout completed! prompt) 
+# Set up Google Sheets 
+gs4_deauth()
+sheet_id <- "https://docs.google.com/spreadsheets/d/1sDfqiv1SF6aebmXRdlyvGeByDgkp67X2PvLJ6tz0-Eg/edit?gid=0#gid=0"
+
+# Set this up but for QMEL?
+gs4_auth(cache = ".secrets", email = "selina.l.cheng@gmail.com")
 
 # Helper function to create empty checkout table --------
 empty_checkout <- function() {
@@ -19,42 +26,16 @@ empty_checkout <- function() {
   )
 }
 
-# Checkout CSV... if it doesn't exist, create an empty checkout table that can be used in the panel 
-safe_read_checkout <- function(file) {
-  
-  if (!file.exists(file)) {
-    df <- empty_checkout()
-    fwrite(df, file)
-    return(df)
-  }
-  
-  df <- tryCatch(
-    fread(file),
-    error = function(e) empty_checkout()
-  )
-  # If checkout.csv exists but is empty, reset to empty
-
-  if (nrow(df) == 0) return(empty_checkout())
- 
-   # Force correct types to prevent bind_rows errors
-  df %>%
-    mutate(
-      checked_out_by = as.character(checked_out_by),
-      item = as.character(item),
-      quantity = as.numeric(quantity),
-      location = as.character(location),
-      checkout_start = as.character(checkout_start),   # Keep dates as character for now to avoid type mismatches... this was creating many errors
-      checked_out_until = as.character(checked_out_until)
-    )
-}
-
 # load in datasets
-users <- fread("users.csv")
-inventory <- fread("inventory.csv")
-checkout <- safe_read_checkout("checkout.csv")
+# Set column type to be character only for simplicity
+users <- read_sheet(sheet_id, sheet = "users", col_types = "c")
+# Create avail_users as a reactiveValues data frame that can be modified
+avail_users <- reactiveValues(df = users)
+
+inventory <- read_sheet(sheet_id, sheet = "inventory", col_types = "c")
+checkout <- read_sheet(sheet_id, sheet = "checkout", col_types = "c")
 
 # UI (user interface... what the people see!) --------
-
 ui <- fluidPage(
   useShinyFeedback(),
     # App title
@@ -100,9 +81,7 @@ ui <- fluidPage(
               tabPanel(
                 icon = icon("shopping-cart"),
                 "Checkout / Return",
-                       
                        sidebarLayout(
-                         
                          sidebarPanel(
                            selectInput("checkout_name","User", choices = users$name), # select user
                            selectInput("checkout_item","Item", choices = inventory$item), # select item
@@ -159,9 +138,19 @@ ui <- fluidPage(
   )
 )
 
-
 # ---- SERVER -------
 server <- function(input, output, session) {
+  observe({
+    avail_users$df
+
+    updateSelectInput(
+      session = session, 
+      inputId = "checkout_name",
+      choices = avail_users$df$name,
+      # selected = head(y_vals, 1)
+    )
+  })
+  
   # reactivate storage for the app 
   checkout_list <- reactiveVal(checkout)
   cart_items <- reactiveVal(empty_checkout())
@@ -240,7 +229,7 @@ server <- function(input, output, session) {
     fwrite(df, "checkout.csv")
   })
   
-# ------ Merging the inventory page with the updated information from the checkout panel --------
+# ------ Inventory SERVER --------
   inventory_view <- reactive({
     
     chk <- checkout_list()
@@ -322,10 +311,11 @@ server <- function(input, output, session) {
       avail_users$df <- (new_table)
       
       # Save new user list
-      write.csv( avail_users$df, "users.csv", row.names=F)
+      # Test appending to sheet
+      sheet_write(data = avail_users$df, ss = sheet_id, sheet = "users")
+      # write.csv(avail_users$df, "users.csv", row.names=F)
     }
   })
-  
   
   # When you REMOVE USERS....
   # Make an object that is an interactive window asking users to click yes or no to proceed with an action 
@@ -364,7 +354,8 @@ server <- function(input, output, session) {
     avail_users$df <- new_table
     
     # Save new user list
-    write.csv( avail_users$df, "users.csv", row.names=F)
+    sheet_write(data = avail_users$df, ss = sheet_id, sheet = "users")
+    # write.csv( avail_users$df, "users.csv", row.names=F)
     
     ## WIP: Build in functionality to remove all user entries from check out list when name is deleted
     
@@ -379,9 +370,7 @@ server <- function(input, output, session) {
   })
 }
 
-
 # RUN APP ------
-
 shinyApp(ui, server)
 
 
@@ -397,4 +386,35 @@ shinyApp(ui, server)
 #             "checkout.csv"
 #           )
 #      )
+
+# Archive code
+# Checkout CSV... if it doesn't exist, create an empty checkout table that can be used in the panel 
+# safe_read_checkout <- function(file) {
+#   
+#   if (!file.exists(file)) {
+#     df <- empty_checkout()
+#     fwrite(df, file)
+#     return(df)
+#   }
+#   
+#   df <- tryCatch(
+#     fread(file),
+#     error = function(e) empty_checkout()
+#   )
+#   # If checkout.csv exists but is empty, reset to empty
+#   
+#   if (nrow(df) == 0) return(empty_checkout())
+#   
+#   # Force correct types to prevent bind_rows errors
+#   df %>%
+#     mutate(
+#       checked_out_by = as.character(checked_out_by),
+#       item = as.character(item),
+#       quantity = as.numeric(quantity),
+#       location = as.character(location),
+#       checkout_start = as.character(checkout_start),   # Keep dates as character for now to avoid type mismatches... this was creating many errors
+#       checked_out_until = as.character(checked_out_until)
+#     )
+# }
+
 
