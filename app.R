@@ -3,11 +3,10 @@ library(shiny) # core Shiny freamework to recognize the app
 library(dplyr)
 library(data.table)
 library(DT)
+library(lubridate)
 library(shinyFeedback) # adds feedback messages for user inputs (ex: checkout completed! prompt) 
 
-
 # Helper function to create empty checkout table --------
-
 empty_checkout <- function() {
   data.frame(
     checked_out_by = character(),
@@ -50,23 +49,20 @@ safe_read_checkout <- function(file) {
 }
 
 # load in datasets
-
 users <- fread("users.csv")
 inventory <- fread("inventory.csv")
 checkout <- safe_read_checkout("checkout.csv")
 
-
 # UI (user interface... what the people see!) --------
 
 ui <- fluidPage(
-  
   useShinyFeedback(),
     # App title
-  titlePanel("QMEL Inventory App"),
+  titlePanel("QMEL Inventory App", windowTitle = "QMEL Inventory App"),
   # Creating tabbed layout
   tabsetPanel(id = "mainTabset",
               
-              # WELCOME TAB UI
+              # -----    WELCOME TAB UI  --------
               tabPanel(
                 icon = icon("house"),
                 "Welcome",
@@ -95,12 +91,12 @@ ui <- fluidPage(
                 tags$br()
               ),
               
-              # Inventory Overview Tab UI
-              tabPanel("Inventory Overview",
+              # ------ Inventory Overview Tab UI --------
+              tabPanel(icon = icon("box-open"), "Inventory Overview",
                        DTOutput("inventory")
               ),
               
-              # Checkout/Return Tab UI
+              # ------ Checkout/Return Tab UI ----------
               tabPanel(
                 icon = icon("shopping-cart"),
                 "Checkout / Return",
@@ -133,27 +129,45 @@ ui <- fluidPage(
                          )
                        )
               ),
+              # ------- USERS (UI) -------
+              tabPanel(icon = icon("users"), "Modify Users",
+                       sidebarLayout(
+                         sidebarPanel(
+                           verticalLayout(
+                             tags$h3("Add users"),
+                             # Text input for name and email
+                             fluidRow(column(12, textInput("name", "First and last name", placeholder = "Joe Shmoe"))),
+                             fluidRow(column(12, textInput("email", "UNH email", placeholder = "Joe.Shmoe@unh.edu"))),
+                             # Action Button to add user
+                             fluidRow(column(12, actionButton("addName", "Add User",
+                                                              style="color: #fff; background-color: #337ab7; border-color: #2e6da4")))
+                           )),
+                         mainPanel(
+                           # Show table of available users
+                           tags$h3("Available users"),
+                           tags$h5("Select rows in table and click 'Remove' button to remove users"),
+                           fluidRow(column(12, DT::DTOutput("newUser"))),
+                           # Create Action button to remove users (based on selected rows)
+                           fluidRow(column(12, actionButton("removeName", "Remove Selected Users",
+                                                            style="color: #fff; background-color: #C23E3E; border-color: #A81D1D"))))
+                       )),
               
               # Full Inventory Tab UI
-              tabPanel("Full Inventory",
+              tabPanel(icon = icon("box"), "Full Inventory",
                        DTOutput("fullInventory")
               )
   )
 )
 
 
-# SERVER -------
-
-
+# ---- SERVER -------
 server <- function(input, output, session) {
-  
   # reactivate storage for the app 
   checkout_list <- reactiveVal(checkout)
   cart_items <- reactiveVal(empty_checkout())
   
-  # ADD TO CART FUNCTION (background for the button) --------
+  # ----- ADD TO CART FUNCTION (background for the button) --------
   observeEvent(input$addToCart, {
-    
     req(input$checkout_name,
         input$checkout_item,
         input$checkout_dates)
@@ -173,14 +187,14 @@ server <- function(input, output, session) {
     cart_items(bind_rows(cart_items(), new_row))
   })
   
-  # Display cart --------
+  # ----- Display cart --------
   output$cart <- renderDT({
     datatable(cart_items(),
               rownames = FALSE,
               options = list(pageLength = 5))
   }, server = TRUE)
   
-  # Submit checkout  --------
+  # ------ Submit checkout  --------
   observeEvent(input$submitCheckout, {
     
     req(nrow(cart_items()) > 0)
@@ -200,7 +214,7 @@ server <- function(input, output, session) {
     showNotification("Checkout submitted!")
   })
   
-  # My items: overview of the items that you have checked out  --------
+  # ------ My items: overview of the items that you have checked out  --------
   output$myItems <- renderDT({
     
     req(input$checkout_name)
@@ -226,7 +240,7 @@ server <- function(input, output, session) {
     fwrite(df, "checkout.csv")
   })
   
-  # Merging the intertnory page with the updated information from the checkout panel --------
+# ------ Merging the inventory page with the updated information from the checkout panel --------
   inventory_view <- reactive({
     
     chk <- checkout_list()
@@ -263,6 +277,106 @@ server <- function(input, output, session) {
               rownames = FALSE,
               options = list(pageLength = 10))
   }, server = TRUE)
+  
+  # ----- USER (SERVER) -------
+  # Create avail_users as a reactiveValues data frame that can be modified
+  avail_users <- reactiveValues(df = users)
+  
+  # Display user list
+  output$newUser <- DT::renderDT({
+    datatable(avail_users$df, rownames= FALSE)
+  })
+  
+  # Code to modify user list
+  # When you ADD USERS....
+  observeEvent(input$addName, {
+    # If there is no name or email, add feedback to the input fields that say you need to enter values
+    shinyFeedback::feedbackDanger("name", input$name == "", "Please enter a name")
+    shinyFeedback::feedbackDanger("email", input$email == "", "Please enter an email")
+    
+    # Require name and email to proceed with following steps
+    req(input$name, input$email)
+    
+    # Check for duplicates of name and email inputs
+    shinyFeedback::feedbackDanger("email", tolower(input$email) %in% tolower(avail_users$df[["email"]]) == T, 
+                                  "That email is already in the system. See list on the right.")
+    
+    shinyFeedback::feedbackDanger("name", tolower(input$name) %in% tolower(avail_users$df[["name"]]) == T, 
+                                  "That name is already in the system. See list on the right.")
+    
+    # If there are no duplicate names or emails, proceed
+    if(tolower(input$name) %in% tolower(avail_users$df[["name"]]) == F & 
+       tolower(input$email) %in% tolower(avail_users$df[["email"]]) == F){
+      
+      # Clear text input boxes
+      updateTextInput(session, "name", value = "")
+      updateTextInput(session, "email", value = "")
+      
+      # Create data frame from input
+      row <- data.frame(name = input$name, email = input$email)
+      
+      # Rbind new input to existing user list
+      new_table <- rbind(avail_users$df, row)
+      
+      # Update existing user list
+      avail_users$df <- (new_table)
+      
+      # Save new user list
+      write.csv( avail_users$df, "users.csv", row.names=F)
+    }
+  })
+  
+  
+  # When you REMOVE USERS....
+  # Make an object that is an interactive window asking users to click yes or no to proceed with an action 
+  modal_confirm <- modalDialog(
+    "Removing users also deletes all checkouts associated with those users. Are you sure you want to continue?",
+    title = "Removing users",
+    footer = tagList(
+      actionButton("cancel", "Cancel"),
+      actionButton("ok", "Remove", class = "btn btn-danger")
+    )
+  )
+  
+  # Now when the remove button is pressed...
+  observeEvent(input$removeName, {
+    # If you have not selected any rows, make a pop up to prompt users to select rows
+    if(length(input$newUser_rows_selected) == 0){
+      showNotification("You have not selected any users. Please select rows to remove")
+    }
+    # Require selected rows to proceed
+    req(input$newUser_rows_selected)
+    
+    # Make pop up to ask users to confirm whether they actually want to remove users
+    showModal(modal_confirm)
+  })
+  
+  # When users select "Remove", 
+  observeEvent(input$ok, {
+    # Require that there are selected rows to proceed with below code
+    req(input$newUser_rows_selected)
+    
+    # Filter out selected rows from data frame
+    new_table <-  avail_users$df %>% 
+      filter((row_number() %in% input$newUser_rows_selected) == F)
+    
+    # Update existing user list
+    avail_users$df <- new_table
+    
+    # Save new user list
+    write.csv( avail_users$df, "users.csv", row.names=F)
+    
+    ## WIP: Build in functionality to remove all user entries from check out list when name is deleted
+    
+    # Give notification that users were removed and remove dialog box
+    showNotification("Users removed")
+    removeModal()
+  })
+  
+  # When users press cancel, remove dialog box
+  observeEvent(input$cancel, {
+    removeModal()
+  })
 }
 
 
