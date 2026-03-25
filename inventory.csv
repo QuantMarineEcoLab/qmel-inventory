@@ -31,9 +31,10 @@ SLS 108,work bench,Tool box,3 x 75 mm flat screw driver,,1
 SLS 108,work bench,Tool box,10 x 75 mm phillips head screw driver,,1
 SLS 108,work bench,Tool box,Folding hex/allen key set,,2
 SLS 108,Shelf 9A,,"Muddy 6"" vented aquarium containers",,16
-SLS 108,Cabinet 8 ,,60W light bulbs,,4
-SLS 108,Cabinet 8 ,,13.5W red light bulb,,1
-SLS 108,Cabinet 8 ,,Fluker's clamp lamp shield,,5
+SLS 108,Cabinet 8 ,Lights,Battery-powered disk lights,,3
+SLS 108,Cabinet 8 ,Lights,60W light bulbs,,4
+SLS 108,Cabinet 8 ,Lights,13.5W red light bulb,,1
+SLS 108,Cabinet 8 ,Lights,Fluker's clamp lamp shield,,5
 SLS 108,Drawer 15,,"RITR field notebooks, 7"" spiral bound",,2
 SLS 108,Drawer 15,,RITR printing paper,,500+ sheets
 SLS 108,Drawer 15,,Scissors,,4
@@ -112,3 +113,27 @@ SLS 108,Arduino Gear Multi drawer box on counter,Hall sensors drawer,"3 Pin, SIP
 SLS 108,Arduino Gear Multi drawer box on counter,Multiplexers and holders drawer,"Multiplexer, 16 prong",,~ 20
 SLS 108,Arduino Gear Multi drawer box on counter,Multiplexers and holders drawer,"Multiplexer, 8 prong",,4
 SLS 108,Arduino Gear Multi drawer box on counter,Multiplexers and holders drawer,Multiplexer holder,,1
+,Shelf 2A,Mounting Hardware,"Full biosensor mounting set (hose clamp x2, brackett x2, screws x4)",,3
+,Shelf 2A,Mounting Hardware,"Hose clamps, spare",,4
+,Shelf 2A,Mounting Hardware,"1-1/4"" galvanized pipe strap mounts",,2
+,Shelf 2A,Mounting Hardware,"2"" mountaing bracketts and screws",,16 sets
+,Shelf 2A,,"Voltmeter, battery-powered ",,1
+,Shelf 2A,,Epoxy (2 parts -- 1/4 bottle each),,2
+,Shelf 2A,,"Heat shrink tubing, assorted sizes 3/32"" - 3/4"" 400 pc set",,many
+,Shelf 2A,,"Heat shrink tubing, assorted sizes 3/32"" - 3/4"" 180 pc set",,"many, mostly larger sizes"
+,Shelf 1A,,"Velcro tape, 20 x 1 in",,"1 roll, 6 m"
+,Shelf 1A,,Dessicant (unused),,~1/2 lb bottle
+,Shelf 1A,,Pantyhose - for dessicant,,plenty
+,Shelf 1A,Cable Glands,4-8mm PG9 Polyamide cable gland,,6
+,Shelf 1A,Cable Glands,4-6.5mm PG7 Polyamide cable gland,,1
+,Arduino Bench ,Wiring tools,Ferrule crimping pliers 0.25-10 mm2,,
+,Arduino Bench ,Wiring tools,18-26 AWG Wire Cutter and Stripper ,,1
+,Arduino Bench ,Wiring tools,Mini pliers shear cutter,,1
+,Arduino Bench ,Wiring tools,10-18 AWG Wire Cutter and Stripper ,,1
+,Arduino Bench ,Wiring tools,8-22 AWG wire stripper and cutter,,
+,Arduino Bench ,Wiring tools,10-24 AWG Self adjusting wire stripper and cutter,,
+,Arduino Bench ,Wiring tools,PETECHTOOL RJ45 Crimp Tool  - cut strip crimp ethernet cables,,1
+,Arduino Bench ,Wiring tools,10-24 AWG Wire Cutter and Stripper,,1
+,Arduino Bench ,Wiring tools,"Cable Strip and Ringer - Jonad Tools CST-1900 Round Cable Strip 3/16"" - 11/8""",,1
+,Shelf 3A,External power sources,Solar USB A-C female power brick,,1
+,Shelf 3A,External power sources,"1200 male exterma power bank, USB-A male, USB-A female x2",,1
