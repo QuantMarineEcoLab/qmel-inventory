@@ -12,6 +12,7 @@ gs4_deauth()
 sheet_id <- "https://docs.google.com/spreadsheets/d/1sDfqiv1SF6aebmXRdlyvGeByDgkp67X2PvLJ6tz0-Eg/edit?gid=0#gid=0"
 
 # Set this up but for QMEL?
+# gs4_auth(cache = ".secrets", email = "selina.l.cheng@gmail.com")
 gs4_auth(cache = ".secrets", email = "quantmarineecolab@gmail.com")
 
 # Helper function to create empty checkout table --------
@@ -33,6 +34,7 @@ empty_checkout <- function() {
 # Set column type to be character only for simplicity
 users <- read_sheet(sheet_id, sheet = "users", col_types = "c")
 # Create avail_users as a reactiveValues data frame that can be modified
+avail_users <- reactiveValues(df = users)
 
 inventory <- read_sheet(sheet_id, sheet = "inventory", col_types = "c")
 checkout <- read_sheet(sheet_id, sheet = "checkout", col_types = "c")
@@ -412,6 +414,37 @@ shinyApp(ui, server)
 
   # rsconnect::deployApp()
 
+
+
+# Archive code
+# Checkout CSV... if it doesn't exist, create an empty checkout table that can be used in the panel 
+# safe_read_checkout <- function(file) {
+#   
+#   if (!file.exists(file)) {
+#     df <- empty_checkout()
+#     fwrite(df, file)
+#     return(df)
+#   }
+#   
+#   df <- tryCatch(
+#     fread(file),
+#     error = function(e) empty_checkout()
+#   )
+#   # If checkout.csv exists but is empty, reset to empty
+#   
+#   if (nrow(df) == 0) return(empty_checkout())
+#   
+#   # Force correct types to prevent bind_rows errors
+#   df %>%
+#     mutate(
+#       checked_out_by = as.character(checked_out_by),
+#       item = as.character(item),
+#       quantity = as.numeric(quantity),
+#       location = as.character(location),
+#       checkout_start = as.character(checkout_start),   # Keep dates as character for now to avoid type mismatches... this was creating many errors
+#       checked_out_until = as.character(checked_out_until)
+#     )
+# }
 
 
 # Archive code
