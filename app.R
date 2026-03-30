@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # load in packages
 library(shiny) # core Shiny framework to recognize the app 
 library(dplyr)
@@ -27,35 +26,10 @@ empty_checkout <- function() {
     location = character(),
     checkout_start = character(),
     checked_out_until = character(),
-=======
-
-
-# Load required packages
-library(shiny)          # Core Shiny framework
-library(dplyr)     
-library(data.table)     
-library(DT)             # Interactive tables
-library(shinyFeedback)  # Feedback messages for user inputs
-library(googlesheets4) # adds google sheets as the shared backend inputs
-
-
-# Helper function to create an empty checkout table -------
-# This guarantees structure + column order never changes
-
-empty_checkout <- function() {
-  data.frame(
-    checked_out_by = character(),       
-    item = character(),                 
-    quantity = numeric(),              
-    location = character(),             
-    checkout_start = character(),       
-    checked_out_until = character(),    
->>>>>>> Stashed changes
     stringsAsFactors = FALSE
   )
 }
 
-<<<<<<< Updated upstream
 # load in datasets
 # Set column type to be character only for simplicity
 users <- read_sheet(sheet_id, sheet = "users", col_types = "c")
@@ -73,90 +47,34 @@ ui <- fluidPage( theme = shinytheme("journal"),
   tabsetPanel(id = "mainTabset",
               
               # -----    WELCOME TAB UI  --------
-=======
-
-# LOAD in datasets ------
-# users and inventory CSVs 
-# set up link to spreadsheet in google sheets
-
-sheet_url <- "https://docs.google.com/spreadsheets/d/1mHr9UwnSpJv8lLR9dXC8shMHeGZyNA51-ayzFfctlUA"
-
-users <- read_sheet(sheet_url, sheet = "users")
-inventory <- read_sheet(sheet_url, sheet = "inventory")   
-
-# Checkout CSV handling
-# This section FORCE-CONTROLS column types to prevent crashes
-if (!file.exists("checkout.csv")) {
-  
-  checkout <- empty_checkout()
-  fwrite(checkout, "checkout.csv")
-  
-} else {
-  
-  checkout <- fread(
-    "checkout.csv",
-    colClasses = list(
-      character = c("checked_out_by",
-                    "item",
-                    "location",
-                    "checkout_start",
-                    "checked_out_until"),
-      numeric = "quantity"
-    )
-  )
-  
-  # If file exists but is empty
-  if (nrow(checkout) == 0) {
-    checkout <- empty_checkout()
-  }
-}
-
-# UI (USER INTERFACE) -------
-ui <- fluidPage(
-  
-  useShinyFeedback(),
-  
-  titlePanel("QMEL Lab Supplies Inventory"),
-  
-  tabsetPanel(id = "mainTabset",
-              
-              # -------------------
-              # Welcome tab
-              # -------------------
->>>>>>> Stashed changes
               tabPanel(
                 icon = icon("house"),
                 "Welcome",
                 
-<<<<<<< Updated upstream
                 tags$h3("Welcome to the QMEL Inventory and Checkout System!"),
                 tags$br(),
-=======
-                h3("Welcome to the QMEL Supply Inventory Checkout System and Record"),
-                br(),
-                h4("A quick overview of how the app works:"),
-                p("This app helps track lab inventory, checkouts, and returns in a coordinated way."),
-                br(),
->>>>>>> Stashed changes
                 
-                h4(HTML('<i class = "fa-solid fa-box-open"></i> Inventory Overview Tab:')),
-                p("View available inventory and what users have checked out."),
-                br(),
+                tags$h4("A quick overview of how the app works:"),
+                tags$p("The idea is that this app will help us easily view and search what items we have in the lab. Hopefully this will help us manage and keep track of our tools in a more coordinated way than last-minute Slack messages when we can't find what we need."),
+                tags$br(),
                 
-                h4(HTML('<i class = "fa-solid fa-cart-shopping"></i> Checkout Tab:')),
-                p("Check out items to yourself, add to cart, and submit checkout."),
-                br(),
+                tags$h4(HTML('<i class="fa-solid fa-box-open"></i> Inventory Overview Tab:')),
+                tags$p("In this tab, you can view the currently-available inventory as well as see what individual users have checked out and when they expect to return their items. You can also view upcoming checkouts for users who have planned far in advance."),
+                tags$br(),
                 
-                h4(HTML('<i class = "fa-solid fa-users"></i> Modify Users Tab:')),
-                p("Add or remove users. Removing users deletes their checkout history."),
-                br(),
+                tags$h4(HTML('<i class="fa-solid fa-cart-shopping"></i> Checkout Tab:')),
+                tags$p("In this tab, the intended use is that you can check out items one by one and add them to your cart, which also creates a 'packing list' for yourself as you plan your fieldwork or labwork. When you're done packing/adding to your cart, you press submit to finish checking out your items. You can also view what items you currently have checked out."),
+                tags$br(),
                 
-                h4(HTML('<i class = "fa-solid fa-box"></i> Full Inventory Tab:')),
-                p("Shows full inventory along with who has each item checked out."),
-                br()
+                tags$h4(HTML('<i class="fa-solid fa-users"></i> Modify Users Tab:')),
+                tags$p("In this tab, you can add and remove the list of available users for this app. Useful for when folks join the lab or graduate. Keep in mind that when you remove users, it will delete all of their equipment checkout records too."),
+                tags$br(),
+                
+                tags$h4(HTML('<i class="fa-solid fa-box"></i> Full Inventory Tab:')),
+                tags$p("This tab just has a table with the full inventory list."),
+                tags$br()
               ),
               
-<<<<<<< Updated upstream
               # ------ Inventory Overview Tab UI --------
               tabPanel(icon = icon("box-open"), "Inventory Overview",
                        DTOutput("inventory")
@@ -192,49 +110,6 @@ ui <- fluidPage(
                            actionButton("submitCheckout","Submit checkout", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
                          )
                        )
-=======
-              
-              # Inventory Overview -----
-              tabPanel(
-                icon = icon("box-open"),
-                "Inventory Overview",
-                h3("Available Inventory"),
-                DTOutput("inventory")
-              ),
-              
-              
-              # Checkout / Return ---------
-              tabPanel(
-                icon = icon("shopping-cart"),
-                "Checkout / Return",
-                
-                sidebarLayout(
-                  
-                  sidebarPanel(
-                    
-                    selectInput("checkout_name", "User", choices = users$name),
-                    selectInput("checkout_item", "Item", choices = inventory$item),
-                    numericInput("checkout_quant", "Quantity", 1, min = 1),
-                    textInput("checkout_location", "Location"),
-                    dateRangeInput("checkout_dates", "Checkout timeframe"),
-                    actionButton("addToCart", "Add to cart", class = "btn-primary")
-                  ),
-                  
-                  mainPanel(
-                    
-                    h4("Items currently checked out"),
-                    DTOutput("myItems"),
-                    actionButton("returnItems", "Return selected", class = "btn-danger"),
-                    
-                    br(), br(),
-                    
-                    h4("Cart"),
-                    DTOutput("cart"),
-                    
-                    actionButton("submitCheckout", "Submit checkout", class = "btn-primary")
-                  )
-                )
->>>>>>> Stashed changes
               ),
               # ------- USERS (UI) -------
               tabPanel(icon = icon("users"), "Modify Users",
@@ -259,45 +134,13 @@ ui <- fluidPage(
                                                             style="color: #fff; background-color: #C23E3E; border-color: #A81D1D"))))
                        )),
               
-<<<<<<< Updated upstream
               # Full Inventory Tab UI
               tabPanel(icon = icon("box"), "Full Inventory",
                        DTOutput("fullInventory")
-=======
-              
-              # Modify Users -----
-              tabPanel(
-                icon = icon("users"),
-                "Modify Users",
-                
-                sidebarLayout(
-                  
-                  sidebarPanel(
-                    textInput("name", "Name"),
-                    textInput("email", "Email"),
-                    actionButton("addUser", "Add user", class = "btn-primary")
-                  ),
-                  
-                  mainPanel(
-                    DTOutput("userTable"),
-                    actionButton("removeUser", "Remove selected", class = "btn-danger")
-                  )
-                )
-              ),
-              
-              # Full Inventory -----
-              tabPanel(
-                icon = icon("box"),
-                "Full Inventory",
-                h3("Full Inventory + Checkout Status"),
-                DTOutput("fullInventory")
->>>>>>> Stashed changes
               )
-              
   )
 )
 
-<<<<<<< Updated upstream
 # ---- SERVER -------
 server <- function(input, output, session) {
   
@@ -313,23 +156,10 @@ server <- function(input, output, session) {
   })
   
   # reactivate storage for the app 
-=======
-# SERVER panel (BACK END LOGIC) ------
-
-server <- function(input, output, session) {
-  
-  # Reactive storage
->>>>>>> Stashed changes
   checkout_list <- reactiveVal(checkout)
-  cart_items    <- reactiveVal(empty_checkout())
-  user_list     <- reactiveVal(users)
+  cart_items <- reactiveVal(empty_checkout())
   
-<<<<<<< Updated upstream
   # ----- ADD TO CART FUNCTION (background for the button) --------
-=======
- 
- # ADD TO CART ------
->>>>>>> Stashed changes
   observeEvent(input$addToCart, {
     
     # If there is no name or email, add feedback to the input fields that say you need to enter values
@@ -341,7 +171,6 @@ server <- function(input, output, session) {
         input$checkout_item,
         input$checkout_dates)
     
-<<<<<<< Updated upstream
     # WIP ---- Add feedback here about if requested quantity is more than available
     # Maybe add feedback about date needs to be in the future, and end date needs to be after start date
     
@@ -354,26 +183,14 @@ server <- function(input, output, session) {
       quantity = as.character(input$checkout_quant),
       location = input$checkout_location,
       checkout_start = as.character(input$checkout_dates[1]),
-=======
-    # Create new row from input ------
-    new_row <- data.frame(
-      checked_out_by    = as.character(input$checkout_name),
-      item              = as.character(input$checkout_item),
-      quantity          = as.numeric(input$checkout_quant),
-      location          = as.character(input$checkout_location),
-      checkout_start    = as.character(input$checkout_dates[1]),
->>>>>>> Stashed changes
       checked_out_until = as.character(input$checkout_dates[2]),
       stringsAsFactors = FALSE
     )
     
-    # Force column order EXACTLY ------
-    new_row <- new_row[, names(checkout_list())]
-    
+    # append to cart (reactiveVal)
     cart_items(bind_rows(cart_items(), new_row))
   })
   
-<<<<<<< Updated upstream
   # ----- Display cart --------
   output$cart <- renderDT({
     datatable(cart_items() %>% select(-checkout_id),
@@ -382,56 +199,29 @@ server <- function(input, output, session) {
   }, server = TRUE)
   
   # ------ Submit checkout  --------
-=======
-  
-  # CART TABLE --------
-  output$cart <- renderDT({
-    datatable(cart_items(), rownames = FALSE, options = list(pageLength = 5))
-  })
-  
-  
- 
-  # SUBMIT CHECKOUT -------
->>>>>>> Stashed changes
   observeEvent(input$submitCheckout, {
     
     req(nrow(cart_items()) > 0)
     
-    current <- checkout_list()
-    cart    <- cart_items()
-    
-    # Guarantee same structure
-    cart <- cart[, names(current)]
-    
-    updated <- bind_rows(current, cart)
+    # Merge cart into main checkout list
+    updated <- bind_rows(checkout_list(), cart_items())
     
     checkout_list(updated)
-<<<<<<< Updated upstream
     
     # Save new merged table to CSV
     # fwrite(updated, "checkout.csv")
     sheet_write(data = updated, ss = sheet_id, sheet = "checkout")
-=======
-    fwrite(updated, "checkout.csv")
->>>>>>> Stashed changes
     
+    # clear cart after your cart has been merged and the table has beem "submitted" 
     cart_items(empty_checkout())
     
-<<<<<<< Updated upstream
     # Notification banner that your checkout has been approved
     showNotification("Items are now checked out to you!")
   })
   
   # ------ My items: overview of the items that you have checked out  --------
-=======
-    showNotification("Checkout submitted!")
-  })
-  
-  
-
-  # MY ITEMS ------ 
->>>>>>> Stashed changes
   output$myItems <- renderDT({
+    
     req(input$checkout_name)
     
     datatable(
@@ -440,14 +230,10 @@ server <- function(input, output, session) {
       rownames = FALSE,
       options = list(pageLength = 5)
     )
-  })
+    
+  }, server = TRUE)
   
-<<<<<<< Updated upstream
   # Return selected items feature -----
-=======
-  
-  # RETURN ITEMS ------
->>>>>>> Stashed changes
   observeEvent(input$returnItems, {
     
     # If you have not selected any rows, make a pop up to prompt users to select rows
@@ -470,84 +256,45 @@ server <- function(input, output, session) {
       filter(checkout_id %in% return_ids == F)
   
     checkout_list(df)
-<<<<<<< Updated upstream
     sheet_write(data = df, ss = sheet_id, sheet = "checkout")
     # fwrite(df, "checkout.csv")
-=======
-    fwrite(df, "checkout.csv")
->>>>>>> Stashed changes
     
     showNotification("Items returned.")
   })
   
-<<<<<<< Updated upstream
 # ------ Inventory SERVER --------
-=======
-  
-  # USER MANAGEMENT -------
-  output$userTable <- renderDT({
-    datatable(user_list(), rownames = FALSE, options = list(pageLength = 5))
-  })
-  
-  observeEvent(input$addUser, {
-    req(input$name, input$email)
-    
-    new_user <- data.frame(name = input$name, email = input$email)
-    user_list(bind_rows(user_list(), new_user))
-    
-    write.csv(user_list(), "users.csv", row.names = FALSE)
-    
-    updateTextInput(session, "name", value = "")
-    updateTextInput(session, "email", value = "")
-  })
-  
-  observeEvent(input$removeUser, {
-    req(input$userTable_rows_selected)
-    
-    updated <- user_list()[-input$userTable_rows_selected, ]
-    user_list(updated)
-    
-    write.csv(updated, "users.csv", row.names = FALSE)
-    
-    showNotification("Users removed.")
-  })
-  
-  
-
-  # FULL INVENTORY MERGE VIEW --------
->>>>>>> Stashed changes
   inventory_view <- reactive({
     
-    inv <- inventory
     chk <- checkout_list()
     
     if (nrow(chk) == 0) {
-      inv$checked_out_by <- NA
-      inv$checked_out_until <- NA
-      return(inv)
+      inventory %>%
+        mutate(
+          checked_out_by = NA,
+          checked_out_until = NA
+        )
+    } else {
+      
+      summary_tbl <- chk %>%
+        group_by(item) %>%
+        summarise(
+          checked_out_by = paste(unique(checked_out_by),
+                                 collapse = ", "),
+          checked_out_until = max(checked_out_until),
+          .groups = "drop"
+        )
+      
+      left_join(inventory, summary_tbl, by = "item")
     }
-    
-    checkout_summary <- chk %>%
-      group_by(item) %>%
-      summarise(
-        checked_out_by =
-          paste(unique(checked_out_by), collapse = ", "),
-        checked_out_until =
-          max(checked_out_until, na.rm = TRUE),
-        .groups = "drop"
-      )
-    
-    inv %>%
-      left_join(checkout_summary, by = "item")
   })
-  
   
   output$inventory <- renderDT({
-    datatable(inventory, rownames = FALSE, options = list(pageLength = 10))
-  })
+    datatable(inventory,
+              rownames = FALSE,
+              options = list(pageLength = 10))
+  }, server = TRUE)
   
   output$fullInventory <- renderDT({
-<<<<<<< Updated upstream
     datatable(inventory_view(),
               rownames = FALSE,
               options = list(pageLength = 10))
@@ -661,26 +408,3 @@ server <- function(input, output, session) {
 # RUN APP ------
 shinyApp(ui, server)
 
-=======
-    datatable(inventory_view(), rownames = FALSE, options = list(pageLength = 10))
-  })
-}
-
-
-# RUN APP
-shinyApp(ui, server)
-
-# to publish new version of the app, run below in command:
-# library(rsconnect)
-# 
-#   rsconnect::deployApp(
-#         appDir = ".",
-#        appFiles = c(
-#              "app.R",
-#              "users.csv",
-#              "inventory.csv",
-#             "checkout.csv"
-#           )
-#      )
-
->>>>>>> Stashed changes
