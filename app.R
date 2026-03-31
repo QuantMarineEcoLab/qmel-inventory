@@ -3,6 +3,7 @@ library(shiny) # core Shiny framework to recognize the app
 library(dplyr)
 library(data.table)
 library(DT)
+library(ggplot2)
 library(shinythemes)
 library(lubridate)
 library(googlesheets4)
@@ -212,7 +213,7 @@ server <- function(input, output, session) {
     # fwrite(updated, "checkout.csv")
     sheet_write(data = updated, ss = sheet_id, sheet = "checkout")
     
-    # clear cart after your cart has been merged and the table has beem "submitted" 
+    # clear cart after your cart has been merged and the table has been "submitted" 
     cart_items(empty_checkout())
     
     # Notification banner that your checkout has been approved
