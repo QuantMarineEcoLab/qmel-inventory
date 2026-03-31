@@ -22,6 +22,7 @@ empty_checkout <- function() {
     checkout_id = character(),
     checked_out_by = character(),
     item = character(),
+    unique_id = character(),
     # quantity = numeric(),
     quantity = character(),
     location = character(),
@@ -87,8 +88,22 @@ ui <- fluidPage( theme = shinytheme("journal"),
                 "Checkout / Return",
                        sidebarLayout(
                          sidebarPanel(
-                           selectInput("checkout_name","User", choices = users$name, selected=""), # select user
-                           selectInput("checkout_item","Item", choices = inventory$item), # select item
+                           selectizeInput("checkout_name","User", choices = users$name, options = list(
+                             placeholder = 'Select user',
+                             onInitialize = I('function() { this.setValue(""); }')
+                           )), # select user
+                           selectizeInput("checkout_item","Item", choices = inventory$item, options = list(
+                             placeholder = 'Select item',
+                             onInitialize = I('function() { this.setValue(""); }')
+                           )), # select item
+                           # Only show this panel if the item actually has a unique ID
+                           conditionalPanel(
+                             condition = "output.checkitem",
+                             selectizeInput("checkout_uniqueID", "Item ID", choices = NA, options = list(
+                               placeholder = 'Select item  ID',
+                               onInitialize = I('function() { this.setValue(""); }')
+                             ))
+                             ),
                            numericInput("checkout_quant","Quantity",1,min=1), # select quantity of items 
                            textInput("checkout_location","Location"),
                            dateRangeInput("checkout_dates","Checkout timeframe"),
@@ -148,16 +163,36 @@ server <- function(input, output, session) {
   # Observe user list. If it changes, update input in checkout list
   observe({
     avail_users$df
-
+    
     updateSelectInput(
       session = session, 
       inputId = "checkout_name",
-      choices = avail_users$df$name,
+      choices = avail_users$df$name
     )
   })
   
+  # Check if there is a unique ID for the item selected
+  output$checkitem <- reactive({
+    !is.na((inventory %>% filter(item == input$checkout_item) %>% pull(unique_id)))
+    print(!is.na((inventory %>% filter(item == input$checkout_item) %>% pull(unique_id))))
+  })
+  outputOptions(output, "checkitem", suspendWhenHidden = F)
+  
+  # Observe item selection. If it has a unique ID, fill in unique ID column
+  observe({
+    input$checkout_item
+
+    updateSelectInput(
+      session = session,
+      inputId="checkout_uniqueID",
+      choices = inventory %>% filter(item == input$checkout_item) %>% pull(unique_id),
+      selected=character(0))
+    })
+
   # reactivate storage for the app 
-  checkout_list <- reactiveVal(checkout)
+  # checkout_list <- reactiveVal(checkout)
+  checkout_list <- reactiveValues(df = checkout)
+  
   cart_items <- reactiveVal(empty_checkout())
   
   # ----- ADD TO CART FUNCTION (background for the button) --------
@@ -167,19 +202,29 @@ server <- function(input, output, session) {
     shinyFeedback::feedbackDanger("checkout_name", input$checkout_name == "", "Please enter a user")
     shinyFeedback::feedbackDanger("checkout_item", input$checkout_item == "", "Please enter an item")
     shinyFeedback::feedbackDanger("checkout_dates", input$checkout_dates == "", "Please enter expected time of check out")
-    
+    shinyFeedback::feedbackDanger("checkout_uniqueID", input$checkout_uniqueID == "", "Please enter the ID associated with your item")
+
+    # Different requirements for check out
+    if(unique(!is.na((inventory %>% filter(item == input$checkout_item) %>% pull(unique_id))))){
+      req(input$checkout_name,
+          input$checkout_item,
+          input$checkout_uniqueID,
+          input$checkout_dates)
+    } else{
     req(input$checkout_name,
         input$checkout_item,
         input$checkout_dates)
+    }
     
     # WIP ---- Add feedback here about if requested quantity is more than available
     # Maybe add feedback about date needs to be in the future, and end date needs to be after start date
     
     # create a new row from the user input
     new_row <- data.frame(
-      checkout_id = as.character((nrow(checkout_list())+1 + nrow(cart_items()))),
+      checkout_id = as.character((max(as.numeric(checkout_list$df$checkout_id))+ 1 + nrow(cart_items()))),
       checked_out_by = input$checkout_name,
       item = input$checkout_item,
+      unique_id = input$checkout_uniqueID,
       # quantity = as.numeric(input$checkout_quant),
       quantity = as.character(input$checkout_quant),
       location = input$checkout_location,
@@ -205,9 +250,9 @@ server <- function(input, output, session) {
     req(nrow(cart_items()) > 0)
     
     # Merge cart into main checkout list
-    updated <- bind_rows(checkout_list(), cart_items())
+    updated <- bind_rows(checkout_list$df, cart_items())
     
-    checkout_list(updated)
+    checkout_list$df <- updated
     
     # Save new merged table to CSV
     # fwrite(updated, "checkout.csv")
@@ -226,7 +271,7 @@ server <- function(input, output, session) {
     req(input$checkout_name)
     
     datatable(
-      checkout_list() %>%
+      checkout_list$df %>%
         filter(checked_out_by == input$checkout_name) %>% select(-checkout_id),
       rownames = FALSE,
       options = list(pageLength = 5)
@@ -244,20 +289,19 @@ server <- function(input, output, session) {
     
     req(input$myItems_rows_selected)
     
-    df <- checkout_list()
+    df <- checkout_list$df
     
     # Get checkout_ids from filtered list
-    return_ids <- checkout_list() %>%
+    return_ids <- checkout_list$df %>%
       filter(checked_out_by == input$checkout_name)
     
     return_ids <- return_ids[input$myItems_rows_selected, "checkout_id"]
     
     # Get rows of items 
-    df <- df %>% 
+    checkout_list$df <- df %>% 
       filter(checkout_id %in% return_ids == F)
-  
-    checkout_list(df)
-    sheet_write(data = df, ss = sheet_id, sheet = "checkout")
+    
+    sheet_write(data = checkout_list$df, ss = sheet_id, sheet = "checkout")
     # fwrite(df, "checkout.csv")
     
     showNotification("Items returned.")
@@ -266,7 +310,7 @@ server <- function(input, output, session) {
 # ------ Inventory SERVER --------
   inventory_view <- reactive({
     
-    chk <- checkout_list()
+    chk <- checkout_list$df
     
     if (nrow(chk) == 0) {
       inventory %>%
