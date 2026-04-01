@@ -202,10 +202,11 @@ server <- function(input, output, session) {
     shinyFeedback::feedbackDanger("checkout_name", input$checkout_name == "", "Please enter a user")
     shinyFeedback::feedbackDanger("checkout_item", input$checkout_item == "", "Please enter an item")
     shinyFeedback::feedbackDanger("checkout_dates", input$checkout_dates == "", "Please enter expected time of check out")
-    shinyFeedback::feedbackDanger("checkout_uniqueID", input$checkout_uniqueID == "", "Please enter the ID associated with your item")
 
     # Different requirements for check out
     if(unique(!is.na((inventory %>% filter(item == input$checkout_item) %>% pull(unique_id))))){
+      shinyFeedback::feedbackDanger("checkout_uniqueID", input$checkout_uniqueID == "", "Please enter the ID associated with your item")
+      
       req(input$checkout_name,
           input$checkout_item,
           input$checkout_uniqueID,
@@ -291,13 +292,17 @@ server <- function(input, output, session) {
     
     df <- checkout_list$df
     
-    # Get checkout_ids from filtered list
+    # Get checkout_ids from checkout list, filtered to match selected user. This should match the view in the app.
     return_ids <- checkout_list$df %>%
-      filter(checked_out_by == input$checkout_name)
+      filter(checked_out_by == input$checkout_name) %>%
+      pull(checkout_id)
     
-    return_ids <- return_ids[input$myItems_rows_selected, "checkout_id"]
+    # filter to only checkout_ids that have been selected 
+    return_ids <- return_ids[input$myItems_rows_selected]
     
-    # Get rows of items 
+    # print(return_ids)
+
+    # Remove any checkout_ids that are in the return_ids vector
     checkout_list$df <- df %>% 
       filter(checkout_id %in% return_ids == F)
     
