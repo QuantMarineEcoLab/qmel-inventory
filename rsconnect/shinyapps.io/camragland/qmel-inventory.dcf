@@ -5,6 +5,10 @@ account: camragland
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16693381
-bundleId: 11753434
+<<<<<<< Updated upstream
+bundleId: 11781883
+=======
+bundleId: 11635527
+>>>>>>> Stashed changes
 url: https://camragland.shinyapps.io/qmel-inventory/
 version: 1
